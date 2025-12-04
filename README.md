@@ -1,6 +1,6 @@
 # ApiDoc CLI Tool
 
-A lightweight static API documentation generator for Java / Spring Boot applications — with **zero runtime dependencies**.
+A lightweight static API documentation generator for Java / Spring Boot applications with **zero runtime dependencies**.
 
 ApiDoc analyzes your source code using JavaParser (AST), detects controllers and DTOs, and produces clean Markdown documentation without running the application.
 
@@ -13,7 +13,7 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 - Detects DTOs marked with `@DtoMarker` (classes or records).
 - Extracts endpoints, paths, HTTP methods, parameters, and request/response bodies.
 - Generates Markdown documentation files grouped by controller.
-- Runs on any machine — no Spring context, no runtime, no server startup.
+- Runs on any machine no Spring context, no runtime, no server startup.
 
 ---
 
