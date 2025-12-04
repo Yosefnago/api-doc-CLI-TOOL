@@ -28,7 +28,7 @@ The release includes:
 cli/
 ├─ apidoc ← Linux/Mac executable
 ├─ apidoc.bat ← Windows executable
-└─ apidoc-1.0.0.jar ← Fat JAR (contains all dependencies)
+└─ apidoc-1.0.3.jar ← Fat JAR (contains all dependencies)
 ```
 ---
 
