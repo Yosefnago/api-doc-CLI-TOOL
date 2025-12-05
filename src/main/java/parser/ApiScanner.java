@@ -9,17 +9,10 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,9 +57,6 @@ import java.util.stream.Stream;
  * @since 1.0.0
  */
 public class ApiScanner {
-
-    private static final Logger log = LoggerFactory.getLogger(ApiScanner.class);
-
 
     // The default output directory name where the generated API documentation files.
     private static final String OUTPUT_DIR = "api-docs";
@@ -295,7 +285,7 @@ public class ApiScanner {
 
         // Step 2: Handle case where the class path was not found in either index
         if (dtoPath == null) {
-            log.warn("Cannot find class for dto {}", dtoName);
+            System.out.println("Cannot find class for dto "+ dtoName);
             return List.of();
         }
 
@@ -417,7 +407,7 @@ public class ApiScanner {
         } catch (Exception e) {
             // If an exception occurs (e.g., parsing error, I/O error), log a warning
             // but suppress the error to allow other parallel tasks to complete.
-            log.warn("Skipping invalid file: {}. Error: {}", path, e.getMessage());
+            System.out.println("Skipping invalid file: " +path+ ". Error: "+e.getMessage());
         }
     }
 
@@ -593,7 +583,7 @@ public class ApiScanner {
         Map<String, List<JsonBuilder>> endpointsByController = endpoints.stream()
                 .collect(Collectors.groupingBy(JsonBuilder::getCLASS_NAME));
 
-        log.info("Generating {} documentation files...", endpointsByController.size());
+        System.out.println("Generating {} documentation files... "+ endpointsByController.size());
 
         // --- Step 3: Iterate and Write Documentation Files ---
         for (Map.Entry<String, List<JsonBuilder>> entry : endpointsByController.entrySet()) {
@@ -677,7 +667,7 @@ public class ApiScanner {
                         });
                     }
                 }
-                log.info("-> Created {}", file.getFileName());
+                System.out.println("-> Created "+ file.getFileName());
             }
         }
     }

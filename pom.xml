@@ -7,7 +7,7 @@
 
     <groupId>com.git.apidoc</groupId>
     <artifactId>apidoc</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -20,6 +20,13 @@
         <picocli.version>4.7.5</picocli.version>
         <slf4j.version>2.0.12</slf4j.version>
     </properties>
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub YosefNago Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/YosefNago/api-doc-CLI-TOOL</url>
+        </repository>
+    </distributionManagement>
 
     <dependencies>
         <dependency>
@@ -34,16 +41,6 @@
             <version>${picocli.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
@@ -68,6 +65,14 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>

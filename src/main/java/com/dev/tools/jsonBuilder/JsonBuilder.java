@@ -13,7 +13,7 @@ import java.util.List;
  * </p>
  *
  * @author Yosef Nago
- * @version 1.0.0
+ * @version 1.0.3
  * @since 1.0.0
  */
 public class JsonBuilder {
