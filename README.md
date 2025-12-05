@@ -4,6 +4,21 @@ A lightweight static API documentation generator for Java / Spring Boot applicat
 
 ApiDoc analyzes your source code using JavaParser (AST), detects controllers and DTOs, and produces clean Markdown documentation without running the application.
 
+
+## 📚 Table of Contents
+
+- [Features](#-features)
+- [Release 1.0.3](#-release-103)
+- [Installing via Maven Dependency](#-installing-via-maven-dependency)
+- [Adding the CLI to Your System PATH](#adding-the-cli-to-your-system-path)
+- [Running the CLI](#-running-the-cli)
+- [Important Notes](#-important-notes)
+- [Dont forget to mark your classes before running](#dont-forget-to-mark-your-classes-before-running)
+- [Requirements](#-requirements)
+- [Contributing](#-contributing)
+- [Author](#-author)
+- [License](#license)
+
 ---
 
 ## ✨ Features
@@ -26,13 +41,12 @@ Download the latest version:
 The release includes:
 ```
 cli/
-├─ apidoc ← Linux/Mac executable
 ├─ apidoc.bat ← Windows executable
 └─ apidoc-1.0.3.jar ← Fat JAR (contains all dependencies)
 ```
 ---
 
-📦 Installing via Maven Dependency
+## 📦 Installing via Maven Dependency
 
 To use the ApiDoc library in your Java / Spring Boot project, add the following dependency:
 ```
@@ -50,7 +64,7 @@ The dependency does not automatically expose the CLI command (apidoc).
 To use the CLI globally, you must add the cli/ directory to your system PATH
 (see instructions below).
 
-⚙️ Adding the CLI to Your System PATH
+## ⚙️ Adding the CLI to Your System PATH
 
 The release package includes a cli/ folder containing:
 ```
@@ -86,7 +100,7 @@ You should see:
 ```
 C:\path\to\apidoc\cli\apidoc.bat
 ```
-🚀 Running the CLI
+## 🚀 Running the CLI
 
 Once PATH is configured, you can run ApiDoc from anywhere:
 ```
@@ -115,7 +129,7 @@ DTO marker:
 public class/record UserDto { ... }
 ```
 
-🛠 Requirements
+## 🛠 Requirements
 
 Java 17+
 
@@ -123,7 +137,7 @@ No additional dependencies required
 
 Does not use Spring runtime
 
-🤝 Contributing
+## 🤝 Contributing
 
 Feel free to submit issues .
 
@@ -131,3 +145,8 @@ Feel free to submit issues .
 
 **Yosef Nago**  
 Creator and maintainer of the ApiDoc CLI tool.
+
+
+## License
+
+See the full license here: [LICENSE](./LICENSE)
