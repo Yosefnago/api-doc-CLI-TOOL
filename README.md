@@ -8,7 +8,7 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 ## 📚 Table of Contents
 
 - [Features](#-features)
-- [Release 1.0.3](#-release-103)
+- [Release 1.0.4](#-release-103)
 - [Installing via Maven Dependency](#-installing-via-maven-dependency)
 - [Adding the CLI to Your System PATH](#-adding-the-cli-to-your-system-path)
 - [Running the CLI](#-running-the-cli)
@@ -32,17 +32,17 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 
 ---
 
-## 📦 Release 1.0.3
+## 📦 Release 1.0.4
 
 Download the latest version:
 
-👉 **https://github.com/Yosefnago/api-doc-CLI-TOOL/releases/tag/v1.0.3**
+👉 **https://github.com/Yosefnago/api-doc-CLI-TOOL/releases/tag/v1.0.4**
 
 The release includes:
 ```
 cli/
 ├─ apidoc.bat ← Windows executable
-└─ apidoc-1.0.3.jar ← Fat JAR (contains all dependencies)
+└─ apidoc-1.0.4.jar ← Fat JAR (contains all dependencies)
 ```
 ---
 
@@ -53,7 +53,7 @@ To use the ApiDoc library in your Java / Spring Boot project, add the following 
 <dependency>
     <groupId>com.git.apidoc</groupId>
     <artifactId>apidoc</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 This dependency includes the API scanner, the JavaParser integration, the markers,
@@ -70,7 +70,7 @@ The release package includes a cli/ folder containing:
 ```
 cli/
 ├─ apidoc.bat        ← Windows executable
-└─ apidoc-1.0.3.jar  ← Fat JAR (all dependencies included)
+└─ apidoc-1.0.4.jar  ← Fat JAR (all dependencies included)
 ```
 To run apidoc as a system-wide command, add this folder to your OS PATH.
 
