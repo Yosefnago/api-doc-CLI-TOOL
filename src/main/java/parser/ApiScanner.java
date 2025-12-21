@@ -9,7 +9,9 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,32 +27,41 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * The ApiScanner is the core component responsible for performing a static analysis
- * of a Java project to extract comprehensive API documentation information.
+ * The {@code ApiScanner} is the core component responsible for performing static analysis
+ * on a Java project in order to generate comprehensive API documentation.
+ *
  * <p>
- * It systematically extracts crucial API details, such as HTTP methods, endpoint paths,
- * method parameters, return DTO types, and fields within complex data structures.
+ * It extracts structural API metadata directly from source code, including HTTP methods,
+ * endpoint paths, method parameters, response and request DTO types, and the internal
+ * fields of complex data models.
  * </p>
+ *
  * <h3>Controller and Data Model Identification</h3>
- * The scanner identifies classes based on two primary marker annotations:
+ * The scanner identifies relevant source elements using explicit marker annotations:
+ *
  * <ul>
- * <h3>Controller Classes:</h3> <li>Marked with {@code @ApiMarker}, these classes define the
- * API endpoints and business logic entry points.</li>
- * <h3>Data Transfer Objects (DTOs):</h3> Marked with {@code @DtoMarker},<li> These classes
- * (or Records) define the structure of data being sent or received by the API. The
- * scanner performs a deep analysis of fields within these marked DTOs.</li>
+ *   <li>
+ *     <b>Controller classes</b> — classes annotated with {@code @ApiMarker}, representing
+ *     API entry points and business logic boundaries.
+ *   </li>
+ *   <li>
+ *     <b>Data Transfer Objects (DTOs)</b> — classes or records annotated with
+ *     {@code @DtoMarker}, defining structured request and response payloads.
+ *   </li>
  * </ul>
+ *
  * <h3>Technical Foundation</h3>
- * The scanner relies on <a href="http://javaparser.org/">JavaParser</a> to build an
- * Abstract Syntax Tree (AST) for each file, enabling deep and accurate code inspection
- * without requiring Spring, reflection, or running the application.
+ * The implementation is based on <a href="https://javaparser.org/">JavaParser</a>,
+ * which constructs an Abstract Syntax Tree (AST) for each source file. This enables
+ * precise, compile-time code inspection without requiring Spring, reflection, or
+ * application execution.
  *
  * <h3>Performance Optimizations</h3>
  * <ul>
- * <li>Parallel file scanning using a dedicated thread pool.</li>
- * <li>ThreadLocal JavaParser instances to avoid synchronization overhead.</li>
- * <li>Caching ASTs based on file last-modified time: Parsing is skipped if a file did not change.</li>
- * <li>Concurrent maps for safe and efficient multithreaded indexing.</li>
+ *   <li>Parallel file scanning using a virtual-thread-backed executor.</li>
+ *   <li>{@code ThreadLocal} {@link JavaParser} instances to eliminate synchronization overhead.</li>
+ *   <li>AST caching based on file last-modified timestamps to avoid redundant parsing.</li>
+ *   <li>Concurrent data structures for safe and efficient multithreaded indexing.</li>
  * </ul>
  *
  * @author Yosef Nago
@@ -58,36 +69,23 @@ import java.util.stream.Stream;
  */
 public class ApiScanner {
 
-    // The default output directory name where the generated API documentation files.
     private static final String OUTPUT_DIR = "api-docs";
 
-    // Map controller class names to their source file paths only classes annotated with @ApiMarker are stored here.
     private final Map<String, Path> classMap  = new ConcurrentHashMap<>();
 
-    // Map controller class/record names to their source file paths only classes/records annotated with @DtoMarker are stored here.
     private final Map<String, Path> dtoMap = new ConcurrentHashMap<>();
 
-    // Caches the last modified timestamp of each scanned file.
-    private final Map<Path, Long> modifiedTimeCache = new ConcurrentHashMap<>();
+    private final Map<Path, SourceCacheEntry> sourceCache = new ConcurrentHashMap<>();
 
-    // Caches the parsed AST (CompilationUnit) for each file.
-    private final Map<Path, CompilationUnit> astCache = new ConcurrentHashMap<>();
-
-
-    // JavaParser configuration – here specifically configured for Java 17 syntax.
     private final ParserConfiguration config =
             new ParserConfiguration()
                     .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17);
 
-    // Each thread receives its own JavaParser instance.
-    private final ThreadLocal<JavaParser> threadLocalParser =
+    private final ThreadLocal<JavaParser> parser =
             ThreadLocal.withInitial(() -> new JavaParser(config));
 
-
-    // VirtualThread pool for parallel scanning of Java files.
     ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
-    // Set of Spring annotations.
     private static final Set<String> ENDPOINT_ANNOTATIONS = Set.of(
             "PostMapping",
             "GetMapping",
@@ -96,6 +94,7 @@ public class ApiScanner {
             "RequestMapping",
             "PatchMapping"
     );
+
     private final List<JsonBuilder.Builder> allEndpointBuilders = new ArrayList<>();
 
     public ApiScanner() {}
@@ -105,71 +104,86 @@ public class ApiScanner {
      *   1. Finds all .java files.<br>
      *   2. Parses each file (with caching).<br>
      *   3. Indexes controllers and DTOs.<br>
-     *   4. After scanning, processes each controller and prints API details.
+     *   4. After scanning, processes each controller and generates API documentation files.
      *
      * @param rootPath the root folder of the Java project
      */
     public void scanProject(String rootPath) throws Exception {
 
-        try (Stream<Path> paths = Files.walk(Path.of(rootPath))) {
-
-            paths.filter(p ->
-                            // 1. Filter out non-Java files and module/package info
-                            p.toString().endsWith(".java")
-                            && !p.getFileName().toString().equals("module-info.java")
-                            && !p.getFileName().toString().equals("package-info.java"))
-                     // 2. Submit file scanning tasks to the Virtual Thread pool
-                    .forEach(p -> executorService.submit(() -> safeScanFile(p)));
-
+        try (Stream<Path> pathStream = Files.find(
+                Path.of(rootPath),
+                Integer.MAX_VALUE,
+                (path, attributes) ->
+                        attributes.isRegularFile()
+                                && path.getFileName().toString().endsWith(".java")
+                                && !path.getFileName().toString().startsWith(".")
+                                && !path.getFileName().toString().endsWith("module-info.java")
+                                && !path.getFileName().toString().endsWith("package-info.java")
+        )) {
+            pathStream.forEach(
+                    p -> executorService.submit(() -> safeScanFile(p))
+            );
         }
-        // 3. Shut down the pool and wait for all parsing tasks to finish before proceeding
         executorService.shutdown();
-        executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 
-        // 4. Process all indexed controllers sequentially
+        if (!executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)){
+            executorService.shutdownNow();
+            throw new Exception("Executor service terminated unexpectedly");
+        }
+
         for (Map.Entry<String, Path> entry : classMap.entrySet()) {
-            CompilationUnit cu = parseCached(entry.getValue());
+            CompilationUnit cu = parseSafe(entry.getValue());
             if(cu == null) continue;
 
             cu.findAll(ClassOrInterfaceDeclaration.class)
                     .forEach(this::processController);
         }
-        // 5. Finalize data (DTO fields) and write all output files
         processFinalDataAndWriteFiles();
     }
     /**
      * Parses a file (using cache if possible) and indexes:
      *   - Controllers annotated with @ApiMarker
-     *   - Record DTOs defined in the file
+     *   - DTO classes and records annotated with @DtoMarker
      *
      * @param path the file being scanned
      */
     private void scanFileAndIndex(Path path)  {
 
-        CompilationUnit cu = parseCached(path);
-        if (cu == null) return;
+        CompilationUnit cu = parseSafe(path);
 
-        // Index Controller classes (@ApiMarker)
-        cu.findAll(ClassOrInterfaceDeclaration.class).stream()
-                .filter(c -> c.getAnnotationByName("ApiMarker").isPresent())
-                .forEach(c -> classMap.put(c.getNameAsString(), path));
+        if (cu == null) {
+            return;
+        }
 
-        // Index DTO classes (@DtoMarker)
-        cu.findAll(ClassOrInterfaceDeclaration.class).stream()
-                .filter(d -> d.getAnnotationByName("DtoMarker").isPresent())
-                .forEach(d -> dtoMap.put(d.getNameAsString(), path));
+        cu.accept(new VoidVisitorAdapter<Void>() {
 
-        // Index DTO classes (@DtoMarker)
-        cu.findAll(RecordDeclaration.class).stream()
-                .filter(d -> d.getAnnotationByName("DtoMarker").isPresent())
-                .forEach(d -> dtoMap.put(d.getNameAsString(), path));
+            @Override
+            public void visit(ClassOrInterfaceDeclaration clazz, Void arg) {
+                super.visit(clazz,arg);
 
+                if (clazz.getAnnotationByName("ApiMarker").isPresent()) {
+                    classMap.put(clazz.getNameAsString(), path);
+                }
+                if (clazz.getAnnotationByName("DtoMarker").isPresent()) {
+                    dtoMap.put(clazz.getNameAsString(), path);
+                }
+            }
+            @Override
+            public void visit(RecordDeclaration record, Void arg) {
+                super.visit(record,arg);
+
+                if(record.getAnnotationByName("DtoMarker").isPresent()) {
+                    dtoMap.put(record.getNameAsString(), path);
+                }
+            }
+
+        },null);
     }
 
     /**
-     * Processes a controller class and prints:
+     * Processes a controller class and xtracts:
      *   - its base endpoint (from @RequestMapping)
-     *   - all API methods inside it
+     *   - all API methods defined in the controller
      *
      * @param controller a JavaParser AST node representing the controller class
      */
@@ -190,44 +204,6 @@ public class ApiScanner {
 
     }
     /**
-     * Parses the file only if it has changed since the last scan.
-     * Otherwise, returns the cached AST.
-     * This significantly reduces CPU time for repeated scans.
-     * @param path the file to parse
-     * @return the parsed CompilationUnit or null if parsing failed
-     */
-    private CompilationUnit parseCached(Path path) {
-
-        try {
-            long currentMtime = Files.getLastModifiedTime(path).toMillis();
-            Long cachedTime = modifiedTimeCache.get(path);
-
-            // Check 1: If a file hasn't changed (based on timestamp), return cached AST
-            if (cachedTime != null && cachedTime == currentMtime) {
-                return astCache.get(path);
-            }
-
-            // Check 2: File changed or not found in cache, proceed with parsing
-            String code = Files.readString(path);
-            CompilationUnit cu = threadLocalParser.get()
-                    .parse(code)
-                    .getResult()
-                    .orElse(null);
-
-            // If parsing succeeded, update both cache maps
-            if (cu != null) {
-                modifiedTimeCache.put(path, currentMtime);
-                astCache.put(path, cu);
-            }
-
-            return cu;
-
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Checks if a method is an API endpoint by detecting Spring mapping annotations.
      *
      * @param method the method to check
@@ -241,26 +217,26 @@ public class ApiScanner {
     }
 
     /**
-     * Extracts the URL path from Spring annotations:
-     *   - @GetMapping("/x")
-     *   - @PostMapping(path="/x")
-     *   - @RequestMapping(value="/x")
+     * Extracts a path value from an annotation expression.
+     * <p>
+     * Supports:
+     * <ul>
+     *   <li>Single-member annotations (e.g. {@code @X("/path")})</li>
+     *   <li>Normal annotations with {@code value} or {@code path} attributes</li>
+     * </ul>
      *
-     * @param annotation the annotation to extract from
-     * @return the extracted path (or empty string if none)
+     * @param annotation the annotation to extract the path from
+     * @return the extracted path, or an empty string if none was found
      */
     private String extractPathFromAnnotation(AnnotationExpr annotation) {
 
-        // Case 1: Single Member Annotation (e.g., @GetMapping("/path"))
         if (annotation.isSingleMemberAnnotationExpr()) {
             return annotation.asSingleMemberAnnotationExpr()
                     .getMemberValue().toString().replace("\"", "");
         }
 
-        // Case 2: Normal Annotation (e.g., @RequestMapping(value="/path", method=...))
         if (annotation.isNormalAnnotationExpr()) {
             return annotation.asNormalAnnotationExpr().getPairs().stream()
-                    // Filter for 'value' or 'path' attributes
                     .filter(p -> p.getNameAsString().equals("value") ||
                             p.getNameAsString().equals("path"))
                     .findFirst()
@@ -280,37 +256,35 @@ public class ApiScanner {
      */
     private List<String> getFieldsOfDto(String dtoName) {
 
-        // Step 1: Attempt to find the DTO path using the dedicated DTO map (@DtoMarker)
         Path dtoPath = dtoMap.get(dtoName);
-
-        // Step 2: Handle case where the class path was not found in either index
         if (dtoPath == null) {
-            System.out.println("Cannot find class for dto "+ dtoName);
+            return List.of();
+        }
+        CompilationUnit cu = parseSafe(dtoPath);
+        if (cu == null) {
             return List.of();
         }
 
-        // Step 3: Safely parse the source file into an AST (CompilationUnit)
-        CompilationUnit cu = parseSafe(dtoPath);
         List<String> fields = new ArrayList<>();
 
-        // Step 4: Find standard Class/Interface declarations
-        cu.findAll(ClassOrInterfaceDeclaration.class)
-                .forEach(c -> {
-                    // Ensure it matches the requested name and is NOT a record (records handled separately)
-                    if (c.getNameAsString().equals(dtoName) && !(c.isRecordDeclaration())) {
-                        fields.addAll(scanFields(c));
-                    }
-                });
+        cu.accept(new VoidVisitorAdapter<Void>() {
 
-        // Step 5: Find Record declarations
-        cu.findAll(RecordDeclaration.class)
-                .forEach(r -> {
-                    // Match by name and use specialized record component scanner
-                    if (r.getNameAsString().equals(dtoName)) {
-                        fields.addAll(scanRecordComponents(r));
-                    }
-                });
-        // Step 6: Return combined list of fields/components
+            @Override
+            public void visit(ClassOrInterfaceDeclaration c, Void arg) {
+                super.visit(c,arg);
+                if (c.getNameAsString().equals(dtoName) && !c.isRecordDeclaration()){
+                    fields.addAll(scanFields(c));
+                }
+            }
+            @Override
+            public void visit(RecordDeclaration r, Void arg) {
+                super.visit(r, arg);
+                if (r.getNameAsString().equals(dtoName)) {
+                    fields.addAll(scanRecordComponents(r));
+                }
+            }
+        }, null);
+
         return fields;
     }
 
@@ -327,15 +301,9 @@ public class ApiScanner {
      * @see #scanRecordComponents(RecordDeclaration)
      */
     private List<String> scanFields(ClassOrInterfaceDeclaration declaration) {
-
-        // The stream processes all FieldDeclarations within the class.
         return declaration.getFields().stream()
-                // 1. flatMap: Expand each FieldDeclaration (which might declare multiple variables, e.g., 'int a, b;')
-                //             into a stream of individual VariableDeclarators.
                 .flatMap(field -> field.getVariables().stream())
-                // 2. map: Transform each VariableDeclarator into the required output format: "name: Type"
                 .map(v -> v.getNameAsString() + " : " + v.getType().toString())
-                // 3. collect: Gather all formatted strings into a final List
                 .collect(Collectors.toList());
     }
 
@@ -353,11 +321,8 @@ public class ApiScanner {
      * @see #scanFields(ClassOrInterfaceDeclaration)
      */
     private List<String> scanRecordComponents(RecordDeclaration record) {
-        // The stream processes all parameters in the Record header, which define the components.
         return record.getParameters().stream()
-                // 1. map: Transform each Record Component (Parameter) into the required output format: "name: Type"
                 .map(p -> p.getNameAsString() + " : " + p.getType().toString())
-                // 2. collect: Gather all formatted strings into a final List
                 .collect(Collectors.toList());
     }
 
@@ -402,11 +367,8 @@ public class ApiScanner {
      */
     private void safeScanFile(Path path) {
         try {
-            // Execute the core logic: Parse the file and update the index maps (thread-safe operations).
             scanFileAndIndex(path);
         } catch (Exception e) {
-            // If an exception occurs (e.g., parsing error, I/O error), log a warning
-            // but suppress the error to allow other parallel tasks to complete.
             System.out.println("Skipping invalid file: " +path+ ". Error: "+e.getMessage());
         }
     }
@@ -423,23 +385,27 @@ public class ApiScanner {
      * @return The parsed {@code CompilationUnit} (AST root node), or {@code null} if parsing or reading the file failed.
      */
     private CompilationUnit parseSafe(Path path) {
-        try {
-            // 1. Read the entire file content into a String (Assumes UTF-8 encoding is safe).
-            String code = Files.readString(path);
 
-            // 2. Obtain a thread-safe JavaParser instance from the ThreadLocal pool.
-            return threadLocalParser.get()
-                    // 3. Perform the parsing operation.
-                    .parse(code)
-                    // 4. Safely extract the result (CompilationUnit) or null if parsing encountered errors.
-                    .getResult()
-                    .orElse(null);
-        } catch (Exception e) {
-            // 5. Catch any IO Exception (e.g., file not found, permission denied) or unhandled
-            //    parsing exceptions and suppress them. Return null to indicate failure.
+        try {
+            long currentMtime = Files.getLastModifiedTime(path).toMillis();
+            SourceCacheEntry cached = sourceCache.get(path);
+
+            if (cached != null && cached.lastModified == currentMtime) {
+                return cached.ast;
+            }
+            String source = Files.readString(path);
+            CompilationUnit cu = parser.get().parse(source)
+                    .getResult().orElse(null);
+
+            if (cu != null){
+                sourceCache.put(path,new SourceCacheEntry(cu,currentMtime));
+            }
+            return cu;
+        }catch (IOException | RuntimeException e) {
             return null;
         }
     }
+    private record SourceCacheEntry(CompilationUnit ast, long lastModified) {}
 
     /**
      * Processes a single controller method to build one or more intermediate {@code JsonBuilder.Builder} objects.
@@ -461,7 +427,6 @@ public class ApiScanner {
             String controllerClassName,
             String classPathPrefix) {
 
-        // Filter to process only annotations that define an HTTP endpoint mapping.
         return method.getAnnotations().stream()
                 .filter(a -> a.getNameAsString().endsWith("Mapping"))
                 .map(a -> {
@@ -502,7 +467,7 @@ public class ApiScanner {
                             .bodyType(requestDtoName);
 
                     return builder;
-                }).collect(Collectors.toList());
+                }).toList();
 
     }
 
@@ -583,7 +548,8 @@ public class ApiScanner {
         Map<String, List<JsonBuilder>> endpointsByController = endpoints.stream()
                 .collect(Collectors.groupingBy(JsonBuilder::getCLASS_NAME));
 
-        System.out.println("Generating {} documentation files... "+ endpointsByController.size());
+        int n = endpointsByController.size();
+        System.out.println("Generating documentation files... "+ n);
 
         // --- Step 3: Iterate and Write Documentation Files ---
         for (Map.Entry<String, List<JsonBuilder>> entry : endpointsByController.entrySet()) {
@@ -599,7 +565,7 @@ public class ApiScanner {
                 writer.println("# API Documentation for " + controllerName);
 
                 // Print the base path prefix (e.g., /api/v1/users)
-                String classPrefix = controllerEndpoints.get(0).getCLASS_END_POINT();
+                String classPrefix = controllerEndpoints.getFirst().getCLASS_END_POINT();
                 if (!classPrefix.isEmpty()) {
                     writer.println("Base Path: `" + classPrefix + "`\n");
                 }
@@ -623,7 +589,7 @@ public class ApiScanner {
                     // Filter out the Request Body DTO parameter from the general method parameters list
                     List<String> urlParameters = endpoint.getPARAMETERS().stream()
                             .filter(p -> requestDtoName == null || !p.endsWith(" : " + requestDtoName))
-                            .collect(Collectors.toList());
+                            .toList();
 
                     if(urlParameters.isEmpty()){
                         writer.println("None");
@@ -655,7 +621,7 @@ public class ApiScanner {
                     writer.println("\n### Response Body (`" + endpoint.getRESPONSE_TYPE() + "`)");
 
                     // Check for void/primitive/unstructured response types
-                    if (endpoint.getRESPONSE_BODY().isEmpty() || endpoint.getRESPONSE_BODY().size() == 1 && endpoint.getRESPONSE_BODY().get(0).equals("No structured response body.")) {
+                    if (endpoint.getRESPONSE_BODY().isEmpty() || endpoint.getRESPONSE_BODY().size() == 1 && endpoint.getRESPONSE_BODY().getFirst().equals("No structured response body.")) {
                         writer.println("No structured body (e.g., primitive, void).");
                     } else {
                         // Print fields table for structured Response DTO

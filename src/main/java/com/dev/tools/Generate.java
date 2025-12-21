@@ -24,7 +24,7 @@ public class Generate implements Runnable {
     public void run() {
 
         System.out.println("Author: Yosef Nago");
-        System.out.println("Tool Version: 1.0");
+        System.out.println("Tool Version: 1.0.4");
         System.out.println("Starting code analysis...");
 
         try {
