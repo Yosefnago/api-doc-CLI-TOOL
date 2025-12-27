@@ -33,7 +33,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>com.dev.tools.Main</mainClass>
+                  <mainClass>com.dev.tools.parser.Main</mainClass>
                 </transformer>
               </transformers>
               <filters>

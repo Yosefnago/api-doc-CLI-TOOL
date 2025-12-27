@@ -1,2 +1,3 @@
+@echo off
 set SCRIPT_DIR=%~dp0
-java -jar "%SCRIPT_DIR%\apidoc-1.0.4.jar" %*
+java -Djava.util.logging.config.file=%SCRIPT_DIR%\logging.properties -jar "%SCRIPT_DIR%\apidoc-1.1.0.jar" %*
