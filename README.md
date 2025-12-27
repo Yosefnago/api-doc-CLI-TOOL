@@ -8,7 +8,7 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 ## 📚 Table of Contents
 
 - [Features](#-features)
-- [Release 1.0.4](#-release-103)
+- [Release 1.1.0](#-release-110)
 - [Installing via Maven Dependency](#-installing-via-maven-dependency)
 - [Adding the CLI to Your System PATH](#-adding-the-cli-to-your-system-path)
 - [Running the CLI](#-running-the-cli)
@@ -28,21 +28,24 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 - Detects DTOs marked with `@DtoMarker` (classes or records).
 - Extracts endpoints, paths, HTTP methods, parameters, and request/response bodies.
 - Generates Markdown documentation files grouped by controller.
-- Runs on any machine no Spring context, no runtime, no server startup.
+- Runs on any machine — no Spring context, no runtime, no server startup required.
+- Supports multi-module Maven projects (microservices + shared libraries).
 
 ---
 
-## 📦 Release 1.0.4
+## 📦 Release 1.1.0
 
 Download the latest version:
 
-👉 **https://github.com/Yosefnago/api-doc-CLI-TOOL/releases/tag/v1.0.4**
+👉 **https://github.com/Yosefnago/api-doc-CLI-TOOL/releases/tag/v1.1.0**
 
 The release includes:
 ```
 cli/
-├─ apidoc.bat ← Windows executable
-└─ apidoc-1.0.4.jar ← Fat JAR (contains all dependencies)
+├─ apidoc.bat           ← Windows launcher script
+├─ apidoc-1.1.0.jar     ← Fat JAR (ApiDoc CLI + all dependencies)
+├─ config.properties   ← Stores the current project root path
+└─ logging.properties  ← Logging configuration for the CLI
 ```
 ---
 
@@ -53,7 +56,7 @@ To use the ApiDoc library in your Java / Spring Boot project, add the following 
 <dependency>
     <groupId>com.git.apidoc</groupId>
     <artifactId>apidoc</artifactId>
-    <version>1.0.4</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 This dependency includes the API scanner, the JavaParser integration, the markers,
@@ -66,12 +69,6 @@ To use the CLI globally, you must add the cli/ directory to your system PATH
 
 ## ⚙️ Adding the CLI to Your System PATH
 
-The release package includes a cli/ folder containing:
-```
-cli/
-├─ apidoc.bat        ← Windows executable
-└─ apidoc-1.0.4.jar  ← Fat JAR (all dependencies included)
-```
 To run apidoc as a system-wide command, add this folder to your OS PATH.
 
 🪟 Windows
@@ -104,17 +101,21 @@ C:\path\to\apidoc\cli\apidoc.bat
 
 Once PATH is configured, you can run ApiDoc from anywhere:
 ```
-apidoc generate
-apidoc --help
-apidoc --version
+apidoc np <path>    # Set the project or workspace root
+apidoc status       # Show the currently configured root path
+apidoc generate     # Generate API documentation for the configured root
+apidoc --help       # Display available commands
+apidoc --version    # Display the installed ApiDoc version
 ```
 ## 📘 Important Notes
 ```
-The Maven dependency gives you Markers, DTO analysis, and API scanning logic.
+The project root is stored in `cli/config.properties`.
 
-The CLI (apidoc / apidoc.bat) is provided in the release bundle and must be added to PATH manually.
+This allows the CLI to be portable and consistent across different projects.
 
-No Spring context or runtime dependencies are required — the tool performs static AST analysis only.
+Multi-module Maven projects (microservices with shared modules) are fully supported.
+
+ApiDoc performs static analysis only — no Spring context or runtime execution is required.
 ```
 ## ⚠️ Dont forget to mark your classes before running!
 
