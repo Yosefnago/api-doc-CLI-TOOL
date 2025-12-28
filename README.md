@@ -28,7 +28,7 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 - Detects DTOs marked with `@DtoMarker` (classes or records).
 - Extracts endpoints, paths, HTTP methods, parameters, and request/response bodies.
 - Generates Markdown documentation files grouped by controller.
-- Runs on any machine — no Spring context, no runtime, no server startup required.
+- Runs on any machine no Spring context, no runtime, no server startup required.
 - Supports multi-module Maven projects (microservices + shared libraries).
 
 ---
