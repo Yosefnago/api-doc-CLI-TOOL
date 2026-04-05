@@ -9,14 +9,14 @@ import picocli.CommandLine;
  * The main entry point for the ApiDoc Command Line Interface (CLI) tool.
  *
  * @author Yosef Nago
- * @version 1.1.0
+ * @version 2.0.0
  * @since 1.0.0
  */
 @CommandLine.Command(
         name = "apidoc",
         mixinStandardHelpOptions = true,
         description = "API documentation generator CLI",
-        version = "ApiDoc CLI 1.1.0 | Author: Yosef Nago",
+        version = "ApiDoc CLI 2.0.0 | Author: Yosef Nago",
         subcommands = {Generate.class, Status.class, SetPath.class}
 )
 public class Main implements Runnable{
