@@ -22,10 +22,20 @@ import java.util.Properties;
  */
 public class PathConfig {
 
-    private static final Path CONFIG_FILE =
-            Path.of(System.getenv("SCRIPT_DIR"), "config.properties");
+    private static final Path CONFIG_FILE = resolveConfigPath();
 
     private static final String KEY = "root.path";
+
+    private static Path resolveConfigPath() {
+        String scriptDir = System.getenv("SCRIPT_DIR");
+
+        if (scriptDir != null && !scriptDir.isBlank()) {
+            return Path.of(scriptDir, "config.properties");
+        }
+
+        String userHome = System.getProperty("user.home");
+        return Path.of(userHome, ".apidoc", "config.properties");
+    }
 
     public static String getPath() {
         Properties p = load();

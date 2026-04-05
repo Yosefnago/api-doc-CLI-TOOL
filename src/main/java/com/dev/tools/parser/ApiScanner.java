@@ -16,10 +16,7 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -84,7 +81,7 @@ public class ApiScanner {
             "PatchMapping"
     );
 
-    private final List<JsonBuilder.Builder> allEndpointBuilders = new ArrayList<>();
+    private final List<JsonBuilder.Builder> allEndpointBuilders = Collections.synchronizedList(new ArrayList<>());
 
     public ApiScanner() {}
 
@@ -112,7 +109,7 @@ public class ApiScanner {
                                     && !path.getFileName().toString().startsWith(".")
                                     && !path.getFileName().toString().endsWith("module-info.java")
                                     && !path.getFileName().toString().endsWith("package-info.java")
-            )) {
+            ).parallel()) {
                 pathStream.forEach(this::safeScanFile);
             }
         }

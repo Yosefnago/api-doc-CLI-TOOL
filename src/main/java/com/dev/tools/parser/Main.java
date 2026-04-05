@@ -25,7 +25,7 @@ public class Main implements Runnable{
             System.getLogger(Main.class.getName());
 
 
-     static void main(String[] args)  {
+    public static void main(String[] args)  {
 
         long startTime = System.currentTimeMillis();
 
@@ -39,10 +39,7 @@ public class Main implements Runnable{
          LOGGER.log(System.Logger.Level.INFO,
                  "Total time: {0} s",
                  String.format("%.3f", seconds));
-
-
         System.exit(exitCode);
-
     }
     @Override
     public void run() {
