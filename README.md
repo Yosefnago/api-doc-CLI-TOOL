@@ -8,7 +8,7 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 ## 📚 Table of Contents
 
 - [Features](#-features)
-- [Release 1.1.0](#-release-110)
+- [Release 2.0.0](#-release-110)
 - [Installing via Maven Dependency](#-installing-via-maven-dependency)
 - [Adding the CLI to Your System PATH](#-adding-the-cli-to-your-system-path)
 - [Running the CLI](#-running-the-cli)
@@ -33,7 +33,7 @@ ApiDoc analyzes your source code using JavaParser (AST), detects controllers and
 
 ---
 
-## 📦 Release 1.1.0
+## 📦 Release 2.0.0
 
 Download the latest version:
 
@@ -43,7 +43,7 @@ The release includes:
 ```
 cli/
 ├─ apidoc.bat           ← Windows launcher script
-├─ apidoc-1.1.0.jar     ← Fat JAR (ApiDoc CLI + all dependencies)
+├─ apidoc-2.0.0.jar     ← Fat JAR (ApiDoc CLI + all dependencies)
 ├─ config.properties   ← Stores the current project root path
 └─ logging.properties  ← Logging configuration for the CLI
 ```
@@ -56,7 +56,7 @@ To use the ApiDoc library in your Java / Spring Boot project, add the following 
 <dependency>
     <groupId>com.git.apidoc</groupId>
     <artifactId>apidoc</artifactId>
-    <version>1.1.0</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 This dependency includes the API scanner, the JavaParser integration, the markers,
@@ -132,7 +132,7 @@ public class/record UserDto { ... }
 
 ## 🛠 Requirements
 
-Java 17+
+Java 21+
 
 No additional dependencies required
 
